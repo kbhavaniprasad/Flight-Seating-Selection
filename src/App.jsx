@@ -19,6 +19,10 @@ import {
   EmptyState,
 } from './components';
 
+const API_BASE_URL = import.meta.env.DEV
+  ? ''
+  : 'https://flight-seating-selection.onrender.com';
+
 /**
  * Toast bus: simple global pub/sub so any component can show toasts without
  * prop drilling.
@@ -166,7 +170,7 @@ function SeatsPage() {
 
       try {
         const response = await fetch(
-          `/api/seats?layoutId=${encodeURIComponent(state.layoutId)}`,
+          `${API_BASE_URL}/api/seats?layoutId=${encodeURIComponent(state.layoutId)}`,
           { signal: controller.signal }
         );
         if (!response.ok) {
@@ -286,7 +290,7 @@ function SeatsPage() {
     }));
 
     try {
-      const response = await fetch('/api/bookings', {
+      const response = await fetch(`${API_BASE_URL}/api/bookings`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ layoutId: state.layoutId, passengers }),
