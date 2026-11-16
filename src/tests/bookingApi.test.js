@@ -29,6 +29,37 @@ describe('booking API persistence', () => {
     }
   });
 
+  it('allows booking preflight requests from the deployed Vercel frontend', async () => {
+    const response = await fetch(`${baseUrl}/api/bookings`, {
+      method: 'OPTIONS',
+      headers: {
+        Origin: 'https://flight-seating-selection.vercel.app',
+        'Access-Control-Request-Method': 'POST',
+        'Access-Control-Request-Headers': 'content-type',
+      },
+    });
+
+    expect(response.status).toBe(204);
+    expect(response.headers.get('access-control-allow-origin')).toBe(
+      'https://flight-seating-selection.vercel.app'
+    );
+    expect(response.headers.get('access-control-allow-methods')).toContain('POST');
+    expect(response.headers.get('access-control-allow-headers')).toContain('Content-Type');
+  });
+
+  it('rejects booking preflight requests from unconfigured origins', async () => {
+    const response = await fetch(`${baseUrl}/api/bookings`, {
+      method: 'OPTIONS',
+      headers: {
+        Origin: 'https://untrusted.example',
+        'Access-Control-Request-Method': 'POST',
+      },
+    });
+
+    expect(response.status).toBe(403);
+    expect(response.headers.get('access-control-allow-origin')).toBeNull();
+  });
+
   it('reserves seats atomically and keeps them unavailable after reopening the database', async () => {
     const emptyAvailability = await fetch(`${baseUrl}/api/seats?layoutId=3-2`);
     expect(await emptyAvailability.json()).toEqual({

@@ -9,6 +9,12 @@ import {
 import { BookingConflictError } from './bookingStore.js';
 
 const projectDirectory = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
+const allowedFrontendOrigins = new Set(
+  (process.env.FRONTEND_ORIGINS || 'https://flight-seating-selection.vercel.app')
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter(Boolean)
+);
 
 class RequestError extends Error {
   constructor(message, statusCode = 400) {
@@ -87,6 +93,28 @@ export function createApp({ store, serveClient = false } = {}) {
   if (!store) throw new Error('A booking store is required.');
 
   const app = express();
+  app.use((request, response, next) => {
+    const origin = request.get('origin');
+    const originIsAllowed = origin && allowedFrontendOrigins.has(origin);
+
+    if (originIsAllowed) {
+      response.set('Access-Control-Allow-Origin', origin);
+      response.set('Vary', 'Origin');
+      response.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+      response.set('Access-Control-Allow-Headers', 'Content-Type');
+    }
+
+    if (request.method === 'OPTIONS') {
+      if (origin && !originIsAllowed) {
+        response.status(403).json({ error: 'Origin is not allowed.' });
+        return;
+      }
+      response.sendStatus(204);
+      return;
+    }
+
+    next();
+  });
   app.use(express.json({ limit: '32kb' }));
 
   app.get('/api/seats', (request, response, next) => {

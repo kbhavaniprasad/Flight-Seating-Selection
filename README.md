@@ -205,6 +205,10 @@ The server serves both the built frontend and API. Set `PORT` and `DATABASE_PATH
 deployment environment, and mount a persistent volume for the SQLite file. Static-only hosting
 (such as GitHub Pages) cannot preserve bookings or serve the API.
 
+When hosting the frontend separately, the API allows the production Vercel origin
+`https://flight-seating-selection.vercel.app`. Set `FRONTEND_ORIGINS` to a comma-separated list
+of exact frontend origins if using a different Vercel domain or a custom domain.
+
 ---
 
 ## Design Decisions & Future Improvements

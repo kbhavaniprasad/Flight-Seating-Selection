@@ -1,9 +1,10 @@
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import App from '../App';
 import { BookingConfirmation } from '../components/BookingConfirmation';
 import { ConfirmSeatsButton } from '../components/PricingSummary';
+import { Seat } from '../components/Seat';
 import { SeatRow } from '../components/SeatRow';
 
 describe('App', () => {
@@ -26,6 +27,23 @@ describe('App', () => {
       })
     );
     expect(markup).toContain('Seat 1A');
+  });
+
+  it('forwards the mouse event to the seat hover handler', () => {
+    const onMouseEnter = vi.fn();
+    const seatElement = Seat.type({
+      seat: { id: '1A', row: 1, letter: 'A', category: 'standard', price: 0 },
+      isSelectedByActive: false,
+      isSelectedByOther: false,
+      isOccupied: false,
+      isBooked: false,
+      onMouseEnter,
+    });
+    const event = { stopPropagation: vi.fn(), currentTarget: {} };
+
+    seatElement.props.onMouseEnter(event);
+
+    expect(onMouseEnter).toHaveBeenCalledWith(event);
   });
 
   it('keeps seats held by another passenger clickable for conflict feedback', () => {

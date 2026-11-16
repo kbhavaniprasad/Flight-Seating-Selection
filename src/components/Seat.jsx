@@ -68,12 +68,12 @@ export const Seat = memo(function Seat({
 
   const handleMouseEnter = (e) => {
     e.stopPropagation();
-    if (onMouseEnter) onMouseEnter();
+    if (onMouseEnter) onMouseEnter(e);
   };
 
   const handleMouseLeave = (e) => {
     e.stopPropagation();
-    if (onMouseLeave) onMouseLeave();
+    if (onMouseLeave) onMouseLeave(e);
   };
 
   return (
