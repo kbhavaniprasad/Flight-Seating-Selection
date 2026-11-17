@@ -18,10 +18,7 @@ import {
   EmptyState,
 } from '../components';
 import { showToast } from '../components/ToastBridge';
-
-const API_BASE_URL = import.meta.env.DEV
-  ? ''
-  : 'https://flight-seating-selection.onrender.com';
+import { apiUrl } from '../config/api';
 
 /**
  * Seat selection page (Step 2 of the booking workflow).
@@ -69,7 +66,7 @@ export function SeatsPage({ reloadKey = 0, onNext }) {
 
       try {
         const response = await fetch(
-          `${API_BASE_URL}/api/seats?layoutId=${encodeURIComponent(state.layoutId)}`,
+          `${apiUrl('/api/seats')}?layoutId=${encodeURIComponent(state.layoutId)}`,
           { signal: controller.signal }
         );
         if (!response.ok) {

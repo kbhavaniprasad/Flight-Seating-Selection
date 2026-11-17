@@ -209,6 +209,25 @@ When hosting the frontend separately, the API allows the production Vercel origi
 `https://flight-seating-selection.vercel.app`. Set `FRONTEND_ORIGINS` to a comma-separated list
 of exact frontend origins if using a different Vercel domain or a custom domain.
 
+### Vercel + Render deployment
+
+- In Vercel, set `VITE_API_BASE_URL` to the Render service origin, for example
+  `https://flight-seating-selection.onrender.com` (no trailing slash). Set it for every deployed
+  environment. Vite embeds this value at build time, so redeploy the frontend after changing it.
+  If unset, the production build uses this same default.
+- In Render, set `FRONTEND_ORIGINS` to the exact Vercel deployment origin(s), comma-separated.
+  The default allowlist contains `https://flight-seating-selection.vercel.app`.
+- Render supplies `PORT`; optionally set `DATABASE_PATH` and attach persistent storage for SQLite.
+- The current `/api/payments` handler is a development mock, not a payment gateway. It returns
+  HTTP 503 in production so a mock response cannot confirm a real booking. Production payments
+  require implementing a provider-backed create/verify flow and configuring its credentials as
+  Render secrets. This repository currently has no payment credentials or provider integration.
+
+After setting variables, deploy the Render service and then rebuild/redeploy the Vercel frontend.
+Verify `GET https://<render-origin>/api/seats?layoutId=3-2` and send an `OPTIONS` request to
+`/api/payments` with an allowed Vercel `Origin` to confirm service health and CORS. The production
+payment POST returns the explicit 503 until a real provider is configured.
+
 ---
 
 ## Design Decisions & Future Improvements

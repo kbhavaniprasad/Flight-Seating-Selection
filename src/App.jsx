@@ -7,10 +7,7 @@ import { PaymentPage } from './pages/PaymentPage';
 import { BookingSuccessPage } from './pages/BookingSuccessPage';
 import { UserSelectionDialog } from './components/UserSelectionDialog';
 import { showToast } from './components/ToastBridge';
-
-const API_BASE_URL = import.meta.env.DEV
-  ? ''
-  : 'https://flight-seating-selection.onrender.com';
+import { apiUrl } from './config/api';
 
 /**
  * Top-level booking application.
@@ -150,7 +147,7 @@ function AppContent() {
         }),
       };
 
-      const response = await fetch(`${API_BASE_URL}/api/bookings`, {
+      const response = await fetch(apiUrl('/api/bookings'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(bookingPayload),

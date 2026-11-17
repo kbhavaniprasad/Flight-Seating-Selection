@@ -1,14 +1,12 @@
 import { useState } from 'react';
 import { formatPrice } from '../data/seatLayouts';
+import { apiUrl } from '../config/api';
 
 /**
  * Payment page with a development-only mock payment integration.
  *
- * This page calls the backend `/api/payments` endpoint, which simulates a
- * payment provider. The booking is only marked complete after a verified
- * successful payment response is received from the backend. A real payment
- * gateway (Stripe, Razorpay, PayPal, …) should replace this mock in
- * production.
+ * The development build uses a clearly labeled mock endpoint. Production
+ * requires a real provider; the backend rejects payments until one is wired.
  */
 export function PaymentPage({
   booking,
@@ -19,13 +17,16 @@ export function PaymentPage({
 }) {
   const [error, setError] = useState(null);
   const [simulateFailure, setSimulateFailure] = useState(false);
+  const [paymentRequestPending, setPaymentRequestPending] = useState(false);
 
   const handlePay = async () => {
+    if (paymentRequestPending || isProcessing) return;
     setError(null);
+    setPaymentRequestPending(true);
     const transactionId = `txn_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
 
     try {
-      const response = await fetch('/api/payments', {
+      const response = await fetch(apiUrl('/api/payments'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -36,16 +37,18 @@ export function PaymentPage({
         }),
       });
 
-      const result = await response.json();
+      const result = await response.json().catch(() => ({}));
 
       if (!response.ok || !result.success) {
-        throw new Error(result.error || 'The payment could not be processed.');
+        throw new Error(result.error || `Payment service returned HTTP ${response.status}.`);
       }
 
       // Verified successful payment response from the backend.
       onPaymentSuccess({ ...booking, transactionId, payment: result });
     } catch (paymentError) {
-      onPaymentFailure(paymentError.message || 'Payment failed. Please try again.');
+      setError(paymentError.message || 'Payment failed. Please try again.');
+    } finally {
+      setPaymentRequestPending(false);
     }
   };
 
@@ -215,7 +218,9 @@ export function PaymentPage({
                 <span className="text-sm text-gray-500">payable now</span>
               </div>
               <p className="text-xs text-gray-400 mt-1">
-                This is a development-only mock payment. No real money is charged.
+                {import.meta.env.DEV
+                  ? 'Development mock only. No real money is charged.'
+                  : 'Online payment is unavailable until a production payment provider is configured.'}
               </p>
             </div>
           </section>
@@ -272,11 +277,11 @@ export function PaymentPage({
             </div>
 
             {/* Dev-only failure simulation — clearly identified, not part of production flow */}
-            <div className="border border-gray-200 rounded-xl p-4 bg-gray-50">
+            {import.meta.env.DEV && <div className="border border-gray-200 rounded-xl p-4 bg-gray-50">
               <h3 className="text-xs font-semibold text-gray-500 uppercase mb-3">
                 Developer options
               </h3>
-              <div className="flex items-center gap-2">
+              {import.meta.env.DEV && <div className="flex items-center gap-2">
                 <input
                   type="checkbox"
                   checked={simulateFailure}
@@ -286,12 +291,12 @@ export function PaymentPage({
                 <label className="text-sm text-gray-700 cursor-pointer">
                   Simulate payment failure
                 </label>
-              </div>
-              <p className="text-xs text-gray-400 mt-2">
+              </div>}
+              {import.meta.env.DEV && <p className="text-xs text-gray-400 mt-2">
                 Toggle to test the payment-failure and retry path. This option only exists in
                 development mode.
-              </p>
-            </div>
+              </p>}
+            </div>}
           </aside>
         </div>
       </main>

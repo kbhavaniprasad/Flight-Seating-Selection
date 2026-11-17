@@ -164,6 +164,13 @@ export function createApp({ store, serveClient = false } = {}) {
   const paymentResults = new Map();
 
   app.post('/api/payments', (request, response, next) => {
+    if (process.env.NODE_ENV === 'production') {
+      response.status(503).json({
+        error: 'Online payment is unavailable because no production payment provider is configured.',
+      });
+      return;
+    }
+
     try {
       const { amount, transactionId, paymentMethod, simulateFailure } = request.body || {};
 
