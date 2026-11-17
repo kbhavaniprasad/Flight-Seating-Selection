@@ -147,6 +147,71 @@ export function createApp({ store, serveClient = false } = {}) {
     }
   });
 
+  /**
+   * POST /api/payments
+   * Development-only mock payment integration.
+   *
+   * In production this route should be replaced with a real payment provider
+   * (Stripe, Razorpay, PayPal, etc.). The backend verifies the payment result
+   * and returns a verified transaction outcome; the frontend must never treat a
+   * client-side click as a successful payment.
+   *
+   * Body:
+   *   { amount, transactionId, paymentMethod, simulateFailure? }
+   *
+   * Idempotency: supplying the same `transactionId` returns the cached result.
+   */
+  const paymentResults = new Map();
+
+  app.post('/api/payments', (request, response, next) => {
+    try {
+      const { amount, transactionId, paymentMethod, simulateFailure } = request.body || {};
+
+      if (!transactionId || typeof transactionId !== 'string') {
+        response.status(400).json({ error: 'A transaction id is required.' });
+        return;
+      }
+      if (!amount || Number(amount) <= 0) {
+        response.status(400).json({ error: 'A valid amount is required.' });
+        return;
+      }
+
+      // Idempotency: return the cached result for a repeated transaction id.
+      if (paymentResults.has(transactionId)) {
+        const cached = paymentResults.get(transactionId);
+        return response.status(200).json({ ...cached, idempotent: true });
+      }
+
+      // Simulated processing delay.
+      const start = Date.now();
+      while (Date.now() - start < 600) {
+        // busy-wait to mimic network latency in this mock implementation
+      }
+
+      const fail = simulateFailure === true || simulateFailure === 'true';
+      const result = fail
+        ? {
+            success: false,
+            status: 'failed',
+            error: 'The payment could not be processed. Please try again or use a different payment method.',
+            transactionId,
+          }
+        : {
+            success: true,
+            status: 'completed',
+            transactionId,
+            amount: Number(amount),
+            paymentMethod: paymentMethod || 'card',
+            paidAt: new Date().toISOString(),
+          };
+
+      paymentResults.set(transactionId, result);
+      response.status(200).json(result);
+    } catch (error) {
+      next(error);
+    }
+  });
+
   app.use('/api', (_request, response) => {
     response.status(404).json({ error: 'API route not found.' });
   });

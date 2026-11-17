@@ -1,27 +1,34 @@
 import { memo, useState } from 'react';
 import { useContext } from 'react';
 import { BookingContext } from '../context/BookingContext';
-import { formatPrice, getCategoryConfig } from '../data/seatLayouts';
+import { formatPrice } from '../data/seatLayouts';
 import { MealSelector } from './MealSelector';
 
+/**
+ * Compact passenger card shown in the right-side booking panel.
+ *
+ * Displays only passenger + seat information:
+ *   - Passenger number (Passenger 1, Passenger 2, …)
+ *   - Selected seat number
+ *   - Seat category (Standard / Premium / Extra Large)
+ *   - Individual seat price
+ *
+ * The meal selector has been removed from this panel per the redesign.
+ */
 export const PassengerCard = memo(function PassengerCard({ passenger }) {
   const {
     dispatch,
     activePassengerId,
     assignments,
-    meals,
     pricing,
   } = useContext(BookingContext);
 
   const seatId = assignments[passenger.id];
-  const mealId = meals[passenger.id];
   const lineItem = pricing.lineItems.find((item) => item.passengerId === passenger.id);
   const seatPrice = lineItem ? lineItem.seatPrice : 0;
-  const mealPrice = lineItem ? lineItem.mealPrice : 0;
+  const category = lineItem ? lineItem.category : null;
   const isActive = activePassengerId === passenger.id;
-  const subtotal = seatPrice + mealPrice;
-
-  const config = seatId ? getCategoryConfig(lineItem?.category?.toLowerCase() || 'standard') : null;
+  const passengerNumber = passenger.id.replace('p', '');
 
   const [editName, setEditName] = useState(false);
   const [nameInput, setNameInput] = useState(passenger.name);
@@ -46,15 +53,15 @@ export const PassengerCard = memo(function PassengerCard({ passenger }) {
           : 'border-gray-200 bg-white hover:border-gray-300 hover:shadow-md'
       }`}
     >
-      {/* Header */}
+      {/* Header: passenger number + name */}
       <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2.5">
           <span
             className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold ${
               isActive ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-600'
             }`}
           >
-            {passenger.id.replace('p', '')}
+            {passengerNumber}
           </span>
           {editName ? (
             <input
@@ -105,12 +112,18 @@ export const PassengerCard = memo(function PassengerCard({ passenger }) {
             {seatId ? (
               <>
                 <span
-                  className={`flex items-center gap-1.5 px-2 py-1 rounded text-xs font-medium border ${
-                    config ? config.badge : 'border-gray-200 text-gray-500'
+                  className={`flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-medium border ${
+                    category === 'Standard'
+                      ? 'border-green-200 text-green-700 bg-green-50'
+                      : category === 'Premium'
+                        ? 'border-amber-200 text-amber-800 bg-amber-50'
+                        : category === 'Extra Large'
+                          ? 'border-purple-200 text-purple-800 bg-purple-50'
+                          : 'border-gray-200 text-gray-500'
                   }`}
                 >
                   {seatId}
-                  {config && <span className="text-[10px]">{config.label.charAt(0)}</span>}
+                  {category && <span className="text-[10px]">{category.charAt(0)}</span>}
                 </span>
                 <button
                   type="button"
@@ -145,22 +158,19 @@ export const PassengerCard = memo(function PassengerCard({ passenger }) {
         </div>
       </div>
 
-      {/* Meal selector */}
-      <MealSelector
-        passengerId={passenger.id}
-        isActive={isActive}
-        onSelect={() => dispatch({ type: 'SET_ACTIVE_PASSENGER', payload: { passengerId: passenger.id } })}
-      />
+      {/* Subtotal (seat only) */}
+      <div className="mb-3 rounded-lg border border-gray-100 bg-gray-50/70 p-3">
+        <MealSelector passengerId={passenger.id} />
+      </div>
 
-      {/* Subtotal */}
       <div className="mt-3 pt-3 border-t border-gray-100 flex items-center justify-between">
         <span className="text-sm font-semibold text-gray-700">Passenger total</span>
-        <span className="text-sm font-bold text-gray-900">{formatPrice(subtotal)}</span>
+        <span className="text-sm font-bold text-gray-900">{formatPrice(seatPrice + (lineItem?.mealPrice || 0))}</span>
       </div>
 
       {!isActive && seatId && (
         <p className="mt-2 text-xs text-gray-500 text-center">
-          Select this passenger to modify their seat or meal.
+          Select this passenger to modify their seat.
         </p>
       )}
     </div>

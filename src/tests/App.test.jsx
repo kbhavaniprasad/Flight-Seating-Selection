@@ -12,7 +12,7 @@ describe('App', () => {
     const markup = renderToStaticMarkup(React.createElement(App));
     expect(markup).toContain('animate-pulse');
     expect(markup).toContain('Select the Number of Passengers');
-    expect(markup).toContain('>Continue</button>');
+    expect(markup).toContain('Continue to seat selection');
   });
 
   it('renders seat buttons in a seat row', () => {
@@ -76,7 +76,7 @@ describe('App', () => {
     );
 
     expect(markup).toContain('Seat 1A, Standard');
-    expect(markup).toContain('occupied, not available');
+    expect(markup).toContain('already booked');
     expect(markup).toContain('aria-disabled="true"');
   });
 

@@ -2,7 +2,6 @@ import { memo, useCallback } from 'react';
 import { useContext } from 'react';
 import { BookingContext } from '../context/BookingContext';
 import { PassengerCard } from './PassengerCard';
-import { MealSelector } from './MealSelector';
 
 export const PassengerList = memo(function PassengerList() {
   const { passengers, activePassengerId, dispatch } = useContext(BookingContext);
@@ -18,16 +17,14 @@ export const PassengerList = memo(function PassengerList() {
         <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wider">
           Passengers
         </h3>
+        <span className="text-xs font-medium text-blue-600">
+          Select a passenger to change their seat
+        </span>
       </div>
       <div className="grid gap-3">
         {passengers.map((p) => (
           <div key={p.id}>
             <PassengerCard passenger={p} />
-            <MealSelector
-              passengerId={p.id}
-              isActive={activePassengerId === p.id}
-              onSelect={handleSetActive}
-            />
           </div>
         ))}
       </div>

@@ -34,6 +34,21 @@ function buildRows(layoutId) {
   });
 }
 
+/**
+ * Compute the live tooltip status for a seat from the actual seat data.
+ */
+function tooltipStatusFor(seatId, { state, seatToPassenger, bookedSeatIds }) {
+  const seat = buildSeatsForLayout(state.layoutId).find((s) => s.id === seatId);
+  if (!seat) return 'available';
+  if (seat.occupied) return 'occupied';
+  if (bookedSeatIds.includes(seatId)) return 'booked';
+  const activeAssignment = state.assignments[state.activePassengerId];
+  if (activeAssignment === seatId) return 'selected';
+  const holderId = seatToPassenger[seatId];
+  if (holderId && holderId !== state.activePassengerId) return 'taken';
+  return 'available';
+}
+
 export const SeatMap = memo(function SeatMap({
   layoutId,
   state,
@@ -50,15 +65,26 @@ export const SeatMap = memo(function SeatMap({
 
   const allSeats = useMemo(() => buildSeatsForLayout(layoutId), [layoutId]);
 
+  // The tooltip status is always derived from live seat data, never hardcoded.
   const seatDetail = useMemo(() => {
     if (!hoveredSeatId) return null;
-    return allSeats.find((s) => s.id === hoveredSeatId) || null;
-  }, [hoveredSeatId, allSeats]);
+    const found = allSeats.find((s) => s.id === hoveredSeatId);
+    if (!found) return null;
+    const status = tooltipStatusFor(hoveredSeatId, {
+      state,
+      seatToPassenger,
+      bookedSeatIds,
+    });
+    return { ...found, status };
+  }, [hoveredSeatId, allSeats, state, seatToPassenger, bookedSeatIds]);
 
   const handleSeatClick = (seatId) => onSeatSelect(seatId);
 
-  const handleTooltipPosition = (x, y) => {
-    setTooltipPosition({ x, y });
+  const handleTooltipPosition = (id, status, x, y) => {
+    setHoveredSeatId(id);
+    if (x !== undefined && y !== undefined) {
+      setTooltipPosition({ x, y });
+    }
   };
 
   return (
@@ -76,7 +102,7 @@ export const SeatMap = memo(function SeatMap({
       <div className="flex flex-col items-center">
         <div
           className="overflow-x-auto border border-gray-200 rounded-xl bg-white shadow-sm"
-          style={{ minHeight: '400px' }}
+          style={{ minHeight: '420px' }}
         >
           <div className="p-4 md:p-6 space-y-3">
             {rows.map((r) => (
@@ -89,12 +115,7 @@ export const SeatMap = memo(function SeatMap({
                 bookedSeatIds={bookedSeatIds}
                 activePassengerId={state.activePassengerId}
                 onSeatClick={handleSeatClick}
-                onSeatMouseEnter={(id, x, y) => {
-                  setHoveredSeatId(id);
-                  if (x !== undefined && y !== undefined) {
-                    setTooltipPosition({ x, y });
-                  }
-                }}
+                onSeatMouseEnter={handleTooltipPosition}
                 onSeatMouseLeave={() => setHoveredSeatId(null)}
               />
             ))}
@@ -103,18 +124,18 @@ export const SeatMap = memo(function SeatMap({
         </div>
       </div>
 
-      {/* Floating tooltip positioned near the hovered seat */}
+      {/* Floating tooltip positioned near the hovered seat. Status comes from live data. */}
       {seatDetail && hoveredSeatId && (
         <div
           className="pointer-events-none"
           style={{
             position: 'fixed',
             left: tooltipPosition.x,
-            top: tooltipPosition.y - 160,
+            top: tooltipPosition.y - 170,
             transform: 'translateX(-50%)',
           }}
         >
-          <SeatTooltip seat={seatDetail} status="available" />
+          <SeatTooltip seat={seatDetail} status={seatDetail.status} />
         </div>
       )}
 

@@ -3,20 +3,18 @@ import { useContext } from 'react';
 import { BookingContext } from '../context/BookingContext';
 import { formatPrice } from '../data/seatLayouts';
 
-export const PricingSummary = memo(function PricingSummary({ onConfirm }) {
+export const PricingSummary = memo(function PricingSummary({ onNext }) {
   const {
     passengers,
     assignments,
-    meals,
     pricing,
     dispatch,
   } = useContext(BookingContext);
 
-  const hasAnySelection =
-    Object.keys(assignments).length > 0 ||
-    Object.values(meals).some((mealId) => mealId && mealId !== 'none');
   const seatCount = Object.keys(assignments).length;
+  const requiredCount = passengers.length;
   const allPassengersHaveSeats = passengers.every((p) => Boolean(assignments[p.id]));
+  const hasAnySelection = seatCount > 0;
 
   const lineItemsByPassenger = new Map(
     pricing.lineItems.map((item) => [item.passengerId, item])
@@ -32,10 +30,11 @@ export const PricingSummary = memo(function PricingSummary({ onConfirm }) {
     return {
       passengerId: p.id,
       passenger: p.name,
+      passengerNumber: p.id.replace('p', ''),
       seat: item?.seatId || '—',
       category: item?.category || '—',
       seatPrice: item?.seatPrice || 0,
-      meal: item?.meal || 'None',
+      meal: item?.meal || 'No Meal',
       mealPrice: item?.mealPrice || 0,
       subtotal: item?.subtotal || 0,
       hasSeat,
@@ -44,10 +43,11 @@ export const PricingSummary = memo(function PricingSummary({ onConfirm }) {
 
   return (
     <section className="space-y-4">
+      {/* Seat selection progress counter */}
       <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
         <div className="px-5 py-4 border-b border-gray-100">
           <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wider flex items-center gap-2">
-            Booking summary
+            Seat selection
           </h3>
         </div>
 
@@ -62,6 +62,9 @@ export const PricingSummary = memo(function PricingSummary({ onConfirm }) {
                   Seat
                 </th>
                 <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase text-right">
+                  Category
+                </th>
+                <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase text-right">
                   Seat price
                 </th>
                 <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase text-right">
@@ -69,9 +72,6 @@ export const PricingSummary = memo(function PricingSummary({ onConfirm }) {
                 </th>
                 <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase text-right">
                   Meal price
-                </th>
-                <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase text-right">
-                  Subtotal
                 </th>
               </tr>
             </thead>
@@ -84,22 +84,31 @@ export const PricingSummary = memo(function PricingSummary({ onConfirm }) {
                   }`}
                 >
                   <td className="px-4 py-3 text-sm font-medium text-gray-900">
+                    <span className="mr-2 text-xs font-semibold text-gray-400">
+                      Passenger {r.passengerNumber}
+                    </span>
                     {r.passenger}
                   </td>
                   <td className="px-4 py-3 text-sm text-gray-700 text-right">
-                    {r.seat}
+                    {r.hasSeat ? (
+                      <span className="font-semibold text-blue-600">{r.seat}</span>
+                    ) : (
+                      <span className="text-gray-400 italic">—</span>
+                    )}
                   </td>
                   <td className="px-4 py-3 text-sm text-gray-700 text-right">
-                    {r.seatPrice === 0 ? '₹0' : formatPrice(r.seatPrice)}
-                  </td>
-                  <td className="px-4 py-3 text-sm text-gray-700 text-right">
-                    {r.meal}
-                  </td>
-                  <td className="px-4 py-3 text-sm text-gray-700 text-right">
-                    {r.mealPrice === 0 ? '₹0' : formatPrice(r.mealPrice)}
+                    {r.hasSeat ? (
+                      <span className="font-medium text-gray-700">{r.category}</span>
+                    ) : (
+                      <span className="text-gray-400 italic">—</span>
+                    )}
                   </td>
                   <td className="px-4 py-3 text-sm font-semibold text-gray-900 text-right">
-                    {formatPrice(r.subtotal)}
+                    {r.seatPrice === 0 ? 'Complimentary' : formatPrice(r.seatPrice)}
+                  </td>
+                  <td className="px-4 py-3 text-sm text-gray-700 text-right">{r.meal}</td>
+                  <td className="px-4 py-3 text-sm font-medium text-gray-900 text-right">
+                    {r.mealPrice === 0 ? 'Free' : formatPrice(r.mealPrice)}
                   </td>
                 </tr>
               ))}
@@ -109,7 +118,7 @@ export const PricingSummary = memo(function PricingSummary({ onConfirm }) {
 
         {!hasAnySelection && (
           <div className="px-5 py-6 text-center text-gray-400 text-sm">
-            No seats or meals selected yet.
+            No seats selected yet. Choose seats on the seat map.
           </div>
         )}
 
@@ -118,8 +127,19 @@ export const PricingSummary = memo(function PricingSummary({ onConfirm }) {
             <div className="flex items-start gap-2">
               <span className="text-amber-600 text-xs">⚠</span>
               <span className="text-sm text-amber-800">
-                Not all passengers have a seat assigned. Please complete seat selection before
-                confirming.
+                {seatCount} of {requiredCount} seat{requiredCount === 1 ? '' : 's'} selected. Please
+                complete seat selection before continuing.
+              </span>
+            </div>
+          </div>
+        )}
+
+        {allPassengersHaveSeats && hasAnySelection && (
+          <div className="px-5 py-3 border-b border-gray-100 bg-green-50">
+            <div className="flex items-start gap-2">
+              <span className="text-green-600 text-xs">✓</span>
+              <span className="text-sm text-green-800">
+                All {requiredCount} seat{requiredCount === 1 ? '' : 's'} selected.
               </span>
             </div>
           </div>
@@ -127,21 +147,26 @@ export const PricingSummary = memo(function PricingSummary({ onConfirm }) {
 
         <div className="px-5 py-4 border-t border-gray-100 bg-gray-50">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-sm font-semibold text-gray-700">Grand total</span>
-            <span className="text-xl font-bold text-gray-900">
-              {formatPrice(pricing.grandTotal)}
-            </span>
+            <span className="text-sm font-semibold text-gray-700">Seat charges</span>
+            <span className="font-medium text-gray-900">{formatPrice(pricing.seatTotal)}</span>
           </div>
-          <p className="text-xs text-gray-500">
-            Includes seat and meal charges. Prices in INR (₹).
-          </p>
+          <div className="flex items-center justify-between mb-2 text-sm">
+            <span className="text-gray-600">Meal charges</span>
+            <span className="font-medium text-gray-900">{formatPrice(pricing.mealTotal)}</span>
+          </div>
+          <div className="flex items-center justify-between border-t border-gray-200 pt-3">
+            <span className="text-sm font-semibold text-gray-700">Total payable</span>
+            <span className="text-xl font-bold text-gray-900">{formatPrice(pricing.grandTotal)}</span>
+          </div>
+          <p className="mt-2 text-xs text-gray-500">Seat and meal charges in INR (₹).</p>
         </div>
 
         <div className="px-5 py-4 border-t border-gray-100">
-          <ConfirmSeatsButton
+          <NextButton
             seatCount={seatCount}
+            requiredCount={requiredCount}
             total={pricing.grandTotal}
-            onClick={onConfirm}
+            onClick={onNext}
             disabled={!allPassengersHaveSeats}
           />
         </div>
@@ -159,6 +184,27 @@ export const PricingSummary = memo(function PricingSummary({ onConfirm }) {
     </section>
   );
 });
+
+function NextButton({ seatCount, requiredCount, total, onClick, disabled = false }) {
+  const label =
+    seatCount === 0
+      ? `Select seats · ${formatPrice(total)}`
+      : seatCount < requiredCount
+        ? `${seatCount} of ${requiredCount} seats selected`
+        : `Next: Review booking · ${formatPrice(total)}`;
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled || seatCount === 0}
+      aria-label={`Next: ${seatCount} of ${requiredCount} seats selected, total ${formatPrice(total)}`}
+      className={`w-full rounded-xl bg-blue-600 px-5 py-3.5 text-sm font-semibold text-white transition-all hover:bg-blue-700 active:scale-[0.98] disabled:cursor-not-allowed disabled:bg-gray-300 disabled:text-gray-500 shadow-md hover:shadow-lg`}
+    >
+      {disabled && seatCount > 0 ? `Complete seat selection (${seatCount} of ${requiredCount})` : label}
+    </button>
+  );
+}
 
 export function ConfirmSeatsButton({ seatCount, total, onClick, disabled = false, className = '' }) {
   const label =

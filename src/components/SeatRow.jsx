@@ -1,6 +1,33 @@
 import { memo } from 'react';
 import { Seat } from './Seat';
 
+/**
+ * Compute the real-time status of a single seat from the actual seat data.
+ *
+ * Statuses:
+ *   - available   : free to select
+ *   - occupied    : pre-occupied by the airline (hard block)
+ *   - booked      : confirmed in the database by another user (hard block)
+ *   - selected    : selected by the active passenger
+ *   - taken       : held by another passenger in this session
+ *   - reserved    : temporarily reserved (treated like booked for selection)
+ */
+function computeSeatStatus({
+  seat,
+  bookedSeatIds,
+  seatToPassenger,
+  activePassengerId,
+  activeAssignment,
+}) {
+  const seatId = `${seat.row}${seat.letter}`;
+  if (seat.occupied) return 'occupied';
+  if (bookedSeatIds.includes(seatId)) return 'booked';
+  if (activeAssignment === seatId) return 'selected';
+  const holderId = seatToPassenger[seatId];
+  if (holderId && holderId !== activePassengerId) return 'taken';
+  return 'available';
+}
+
 export const SeatRow = memo(function SeatRow({
   row,
   seats, // array of seat columns for this row (may include aisle markers)
@@ -28,25 +55,34 @@ export const SeatRow = memo(function SeatRow({
 
         const seatId = `${row}${entry.letter}`;
         const seat = { ...entry, id: seatId, row };
-        const occupied = seat.occupied || bookedSeatIds.includes(seatId);
-        const holderId = seatToPassenger[seatId];
-        const isSelectedByActive = activeAssignment === seatId;
-        const isSelectedByOther = Boolean(holderId && holderId !== activePassengerId);
+        const status = computeSeatStatus({
+          seat,
+          bookedSeatIds,
+          seatToPassenger,
+          activePassengerId,
+          activeAssignment,
+        });
+
+        const isSelectedByActive = status === 'selected';
+        const isSelectedByOther = status === 'taken';
+        const isOccupied = status === 'occupied';
+        const isBooked = status === 'booked' || status === 'reserved';
 
         return (
           <Seat
             key={seatId}
             seat={seat}
+            status={status}
             isSelectedByActive={isSelectedByActive}
             isSelectedByOther={isSelectedByOther}
-            isOccupied={occupied}
-            isBooked={occupied}
+            isOccupied={isOccupied}
+            isBooked={isBooked}
             onClick={(e) => {
               onSeatClick(seatId);
             }}
             onMouseEnter={(e) => {
               const rect = e.currentTarget.getBoundingClientRect();
-              onSeatMouseEnter(seatId, rect.left + rect.width / 2, rect.top);
+              onSeatMouseEnter(seatId, status, rect.left + rect.width / 2, rect.top);
             }}
             onMouseLeave={(e) => {
               onSeatMouseLeave();
