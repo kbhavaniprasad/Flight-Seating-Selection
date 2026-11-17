@@ -1,4 +1,6 @@
-const configuredApiBase = import.meta.env.VITE_API_BASE_URL?.trim();
+const configuredApiBase = (
+  import.meta.env.API_BASE_URL || import.meta.env.VITE_API_BASE_URL
+)?.trim();
 const defaultApiBase = import.meta.env.DEV
   ? ''
   : 'https://flight-seating-selection.onrender.com';

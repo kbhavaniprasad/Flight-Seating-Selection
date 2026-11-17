@@ -211,10 +211,10 @@ of exact frontend origins if using a different Vercel domain or a custom domain.
 
 ### Vercel + Render deployment
 
-- In Vercel, set `VITE_API_BASE_URL` to the Render service origin, for example
+- In Vercel, set `API_BASE_URL` to the Render service origin, for example
   `https://flight-seating-selection.onrender.com` (no trailing slash). Set it for every deployed
   environment. Vite embeds this value at build time, so redeploy the frontend after changing it.
-  If unset, the production build uses this same default.
+  If unset, the production build uses this same default. `VITE_API_BASE_URL` is also supported.
 - In Render, set `FRONTEND_ORIGINS` to the exact Vercel deployment origin(s), comma-separated.
   The default allowlist contains `https://flight-seating-selection.vercel.app`.
 - Render supplies `PORT`; optionally set `DATABASE_PATH` and attach persistent storage for SQLite.
