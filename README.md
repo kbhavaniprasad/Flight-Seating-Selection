@@ -206,8 +206,9 @@ deployment environment, and mount a persistent volume for the SQLite file. Stati
 (such as GitHub Pages) cannot preserve bookings or serve the API.
 
 When hosting the frontend separately, the API allows the production Vercel origin
-`https://flight-seating-selection.vercel.app`. Set `FRONTEND_ORIGINS` to a comma-separated list
-of exact frontend origins if using a different Vercel domain or a custom domain.
+`https://flight-seating-selection.vercel.app` and local Vite development at
+`http://localhost:5173`. Set `FRONTEND_ORIGINS` to a comma-separated list of additional exact
+preview/custom frontend origins; it extends the defaults.
 
 ### Vercel + Render deployment
 
@@ -215,8 +216,8 @@ of exact frontend origins if using a different Vercel domain or a custom domain.
   `https://flight-seating-selection.onrender.com` (no trailing slash). Set it for every deployed
   environment. Vite embeds this value at build time, so redeploy the frontend after changing it.
   If unset, the production build uses this same default. `VITE_API_BASE_URL` is also supported.
-- In Render, set `FRONTEND_ORIGINS` to the exact Vercel deployment origin(s), comma-separated.
-  The default allowlist contains `https://flight-seating-selection.vercel.app`.
+- In Render, optionally set `FRONTEND_ORIGINS` to additional exact preview/custom frontend
+  origins, comma-separated. The Vercel and localhost origins remain allowed.
 - Render supplies `PORT`; optionally set `DATABASE_PATH` and attach persistent storage for SQLite.
 - The current `/api/payments` handler is a development mock, not a payment gateway. It returns
   HTTP 503 in production so a mock response cannot confirm a real booking. Production payments

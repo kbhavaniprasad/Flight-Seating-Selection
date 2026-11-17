@@ -9,12 +9,60 @@ import {
 import { BookingConflictError } from './bookingStore.js';
 
 const projectDirectory = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
+const DEFAULT_FRONTEND_ORIGINS = [
+  'https://flight-seating-selection.vercel.app',
+  'http://localhost:5173',
+];
+
+function normalizeOrigin(value) {
+  try {
+    const url = new URL(value);
+    return ['http:', 'https:'].includes(url.protocol) ? url.origin : null;
+  } catch {
+    return null;
+  }
+}
+
+// Keep required app origins allowed even when Render has a custom allowlist;
+// FRONTEND_ORIGINS adds any preview/custom domains without replacing defaults.
 const allowedFrontendOrigins = new Set(
-  (process.env.FRONTEND_ORIGINS || 'https://flight-seating-selection.vercel.app')
-    .split(',')
-    .map((origin) => origin.trim())
+  [
+    ...DEFAULT_FRONTEND_ORIGINS,
+    ...(process.env.FRONTEND_ORIGINS || '').split(','),
+  ]
+    .map((origin) => normalizeOrigin(origin.trim()))
     .filter(Boolean)
 );
+
+export function corsMiddleware(request, response, next) {
+  const origin = request.get('origin');
+  const normalizedOrigin = origin ? normalizeOrigin(origin) : null;
+  const originIsAllowed = normalizedOrigin && allowedFrontendOrigins.has(normalizedOrigin);
+
+  response.vary('Origin');
+
+  if (originIsAllowed) {
+    response.set('Access-Control-Allow-Origin', normalizedOrigin);
+    response.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+    response.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  }
+
+  if (request.method === 'OPTIONS') {
+    if (origin && !originIsAllowed) {
+      response.status(403).json({ error: 'Origin is not allowed.' });
+      return;
+    }
+    const requestedMethod = request.get('access-control-request-method');
+    if (requestedMethod && !['GET', 'POST'].includes(requestedMethod.toUpperCase())) {
+      response.status(405).json({ error: 'Requested CORS method is not allowed.' });
+      return;
+    }
+    response.sendStatus(204);
+    return;
+  }
+
+  next();
+}
 
 class RequestError extends Error {
   constructor(message, statusCode = 400) {
@@ -93,28 +141,7 @@ export function createApp({ store, serveClient = false } = {}) {
   if (!store) throw new Error('A booking store is required.');
 
   const app = express();
-  app.use((request, response, next) => {
-    const origin = request.get('origin');
-    const originIsAllowed = origin && allowedFrontendOrigins.has(origin);
-
-    if (originIsAllowed) {
-      response.set('Access-Control-Allow-Origin', origin);
-      response.set('Vary', 'Origin');
-      response.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-      response.set('Access-Control-Allow-Headers', 'Content-Type');
-    }
-
-    if (request.method === 'OPTIONS') {
-      if (origin && !originIsAllowed) {
-        response.status(403).json({ error: 'Origin is not allowed.' });
-        return;
-      }
-      response.sendStatus(204);
-      return;
-    }
-
-    next();
-  });
+  app.use(corsMiddleware);
   app.use(express.json({ limit: '32kb' }));
 
   app.get('/api/seats', (request, response, next) => {

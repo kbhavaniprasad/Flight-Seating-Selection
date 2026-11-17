@@ -35,7 +35,7 @@ describe('booking API persistence', () => {
       headers: {
         Origin: 'https://flight-seating-selection.vercel.app',
         'Access-Control-Request-Method': 'POST',
-        'Access-Control-Request-Headers': 'content-type',
+        'Access-Control-Request-Headers': 'content-type,authorization',
       },
     });
 
@@ -45,6 +45,52 @@ describe('booking API persistence', () => {
     );
     expect(response.headers.get('access-control-allow-methods')).toContain('POST');
     expect(response.headers.get('access-control-allow-headers')).toContain('Content-Type');
+    expect(response.headers.get('access-control-allow-headers')).toContain('Authorization');
+  });
+
+  it('allows payment preflight requests from Vercel and the local Vite origin', async () => {
+    for (const origin of [
+      'https://flight-seating-selection.vercel.app',
+      'http://localhost:5173',
+    ]) {
+      const response = await fetch(`${baseUrl}/api/payments`, {
+        method: 'OPTIONS',
+        headers: {
+          Origin: origin,
+          'Access-Control-Request-Method': 'POST',
+          'Access-Control-Request-Headers': 'content-type,authorization',
+        },
+      });
+
+      expect(response.status).toBe(204);
+      expect(response.headers.get('access-control-allow-origin')).toBe(origin);
+      expect(response.headers.get('access-control-allow-methods')).toContain('POST');
+      expect(response.headers.get('access-control-allow-headers')).toContain('Authorization');
+    }
+  });
+
+  it('routes a payment POST and returns a development payment result', async () => {
+    const previousNodeEnv = process.env.NODE_ENV;
+    process.env.NODE_ENV = 'test';
+    try {
+      const response = await fetch(`${baseUrl}/api/payments`, {
+        method: 'POST',
+        headers: {
+          Origin: 'https://flight-seating-selection.vercel.app',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ amount: 150, transactionId: `test-${Date.now()}` }),
+      });
+
+      expect(response.status).toBe(200);
+      expect(response.headers.get('access-control-allow-origin')).toBe(
+        'https://flight-seating-selection.vercel.app'
+      );
+      expect((await response.json()).success).toBe(true);
+    } finally {
+      if (previousNodeEnv === undefined) delete process.env.NODE_ENV;
+      else process.env.NODE_ENV = previousNodeEnv;
+    }
   });
 
   it('rejects booking preflight requests from unconfigured origins', async () => {
